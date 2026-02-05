@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 
 # ---------- CONFIG ----------
 st.set_page_config(
@@ -8,20 +9,15 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# CSS para esconder a seta lateral e ajustar métricas no mobile
+# CSS para garantir que nada "estoure" nas laterais
 st.markdown("""
     <style>
-    .block-container { padding-top: 1rem; padding-bottom: 1rem; }
-    [data-testid="stMetricValue"] { font-size: 1.8rem; }
-    /* Esconde o menu lateral no mobile */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+    .block-container { padding: 1rem 1rem; }
+    [data-testid="stMetricValue"] { font-size: 1.6rem !important; }
     </style>
     """, unsafe_allow_html=True)
 
 st.title("💰 Simulador Financeiro")
-st.caption("À vista vs Parcelado • CET • Farol Financeiro")
 
 # ---------- FUNÇÕES ----------
 def calcular_parcela(valor, parcelas, juro):
@@ -53,65 +49,58 @@ def simular_parcelado(valor, parcelas, juros, rendimento):
         
         dados.append({
             "Mês": mes, 
-            "Saldo inicial": round(saldo_inicial, 2), 
-            "Rendimento": round(rend_mes, 2),
-            "Saldo c/ rendimento": round(saldo_total, 2), 
-            "Parcela": round(v_parcela, 2), 
             "Saldo final": round(saldo_final, 2)
         })
         saldo = saldo_final
 
     df = pd.DataFrame(dados)
-    cet_m, cet_a = calcular_cet_aproximado(valor, v_parcela, parcelas)
-    return df, v_parcela, v_parcela * parcelas, cet_a
+    _, cet_a = calcular_cet_aproximado(valor, v_parcela, parcelas)
+    return df, v_parcela, cet_a
 
 # ---------- INPUTS ----------
-with st.expander("⚙️ Configurar Dados da Compra", expanded=True):
+with st.expander("⚙️ Configurar Dados", expanded=True):
     col1, col2 = st.columns(2)
     with col1:
-        valor = st.number_input("Valor do Produto (R$)", min_value=0.0, value=10000.0, step=100.0, format="%.2f")
-        parcelas = st.number_input("Qtd. Parcelas", min_value=1, value=12, step=1)
+        valor = st.number_input("Valor (R$)", min_value=0.0, value=10000.0, format="%.2f")
+        parcelas = st.number_input("Parcelas", min_value=1, value=12, step=1)
     with col2:
-        juros = st.number_input("Juros % ao mês", min_value=0.0, value=1.0, step=0.1, format="%.2f")
-        rendimento = st.number_input("Rendimento Inv. % mês", min_value=0.0, value=1.0, step=0.1, format="%.2f")
+        juros = st.number_input("Juros % mês", min_value=0.0, value=1.0, format="%.2f")
+        rendimento = st.number_input("Rendimento % mês", min_value=0.0, value=1.0, format="%.2f")
     
-    btn_simular = st.button("📊 Calcular Simulação", use_container_width=True, type="primary")
+    btn = st.button("📊 Simular", use_container_width=True, type="primary")
 
 # ---------- RESULTADOS ----------
-if btn_simular:
-    df, v_parcela, total_pago, cet_a = simular_parcelado(valor, parcelas, juros, rendimento)
+if btn:
+    df, v_parcela, cet_a = simular_parcelado(valor, parcelas, juros, rendimento)
     
     m1, m2 = st.columns(2)
-    # Formatação Brasileira Manual para as métricas
     m1.metric("Parcela", f"R$ {v_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
     m2.metric("CET Anual", f"{cet_a:.2f}%")
 
-    # --- GRÁFICO (Tenta usar Plotly, se não der, usa o padrão) ---
     st.subheader("📉 Evolução do Saldo")
-    try:
-        import plotly.express as px
-        fig = px.area(df, x="Mês", y="Saldo final", template="plotly_dark")
-        fig.update_traces(
-            hovertemplate="<b>Mês %{x}</b><br>Saldo: R$ %{y:,.2f}<extra></extra>".replace(",", "v").replace(".", ",").replace("v", "."),
-            line_color="#29b5e8"
-        )
-        fig.update_layout(height=300, margin=dict(l=0,r=0,b=0,t=0), yaxis=dict(tickformat=",.2f"))
-        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-    except ImportError:
-        st.area_chart(df.set_index("Mês")["Saldo final"])
-        st.warning("Instale a biblioteca 'plotly' para ver o gráfico formatado corretamente.")
-
-    # --- TABELA ---
-    st.subheader("📅 Tabela Mensal")
-    st.dataframe(
-        df,
-        column_config={
-            "Mês": st.column_config.NumberColumn("Mês"),
-            "Saldo inicial": st.column_config.NumberColumn("Início", format="R$ %.2f"),
-            "Rendimento": st.column_config.NumberColumn("Rent.", format="R$ %.2f"),
-            "Saldo c/ rendimento": st.column_config.NumberColumn("Total", format="R$ %.2f"),
-            "Parcela": st.column_config.NumberColumn("Parcela", format="R$ %.2f"),
-            "Saldo final": st.column_config.NumberColumn("Fim", format="R$ %.2f"),
-        },
-        hide_index=True, use_container_width=True
+    
+    fig = px.area(df, x="Mês", y="Saldo final", template="plotly_dark")
+    
+    # Ajustes finos para NÃO estourar a tela
+    fig.update_layout(
+        xaxis = dict(
+            tickmode = 'linear',
+            tick0 = 1,
+            dtick = 1,
+            fixedrange=True # Desabilita zoom no mobile para não bugar a rolagem
+        ),
+        yaxis=dict(
+            tickformat=",.2f",
+            fixedrange=True
+        ),
+        margin=dict(l=10, r=10, t=10, b=10),
+        height=300,
+        autosize=True # Isso faz ele se adaptar ao container do Streamlit
     )
+
+    fig.update_traces(
+        hovertemplate="<b>Mês %{x}</b><br>Saldo: R$ %{y:,.2f}<extra></extra>".replace(",", "v").replace(".", ",").replace("v", "."),
+        line_color="#29b5e8"
+    )
+    
+    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
