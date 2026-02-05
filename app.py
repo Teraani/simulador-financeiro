@@ -57,24 +57,24 @@ with st.expander("⚙️ Configurar Dados Reais", expanded=True):
 if btn_simular:
     j, r, inf = juros/100, rendimento/100, inflacao/100
     v_parcela = calcular_parcela(valor, parcelas, j)
+    valor_a_vista = valor * (1 - desconto_vista / 100)
     
     saldo, dados = valor, []
     ganho_inflacao_total = 0
 
     for mes in range(1, parcelas + 1):
         saldo_inicial = saldo
-        rend_mes = saldo_inicial * r # Calculando o rendimento que tinha sumido
+        rend_mes = saldo_inicial * r 
         saldo_com_rendimento = saldo_inicial + rend_mes
         saldo_final = saldo_com_rendimento - v_parcela
         
-        # Cálculo de poder de compra
         parcela_real = v_parcela / ((1 + inf) ** mes)
         ganho_inflacao_total += (v_parcela - parcela_real)
         
         dados.append({
             "Mês": mes,
             "Saldo inicial": saldo_inicial,
-            "Rendimento": rend_mes, # Coluna restaurada
+            "Rendimento": rend_mes,
             "Parcela Fixa": v_parcela,
             "Saldo final": saldo_final,
             "Poder de Compra": parcela_real
@@ -82,7 +82,7 @@ if btn_simular:
         saldo = saldo_final
 
     df = pd.DataFrame(dados)
-    _, cet_a = calcular_cet_aproximado(valor, v_parcela, parcelas)
+    cet_m, cet_a = calcular_cet_aproximado(valor, v_parcela, parcelas)
 
     # ---------- EXIBIÇÃO ----------
     st.subheader("📈 Métricas")
@@ -102,14 +102,23 @@ if btn_simular:
             "Rendimento": st.column_config.NumberColumn("Ganho Inv.", format="R$ %.2f"),
             "Parcela Fixa": st.column_config.NumberColumn("Parcela", format="R$ %.2f"),
             "Saldo final": st.column_config.NumberColumn("Fim", format="R$ %.2f"),
-            "Poder de Compra": st.column_config.ProgressColumn("Poder de Compra", help="Quanto a parcela vale realmente", format="R$ %.2f", min_value=0, max_value=v_parcela)
+            "Poder de Compra": st.column_config.ProgressColumn("Poder de Compra", help="Valor da parcela corrigido pela inflação", format="R$ %.2f", min_value=0, max_value=v_parcela)
         },
         hide_index=True, use_container_width=True
     )
 
-    # Veredito
+    # ---------- VEREDITO E ANÁLISE ----------
     st.subheader("🚦 Veredito")
+    
     if saldo > 0:
-        st.success(f"**🟢 PARCELE!** No final você terá **{fmt_br(saldo)}** de sobra. O rendimento superou o custo.")
+        st.success(f"**🟢 PARCELE!** Ao final de {parcelas} meses, você ainda terá **{fmt_br(saldo)}** na conta rendendo. O parcelamento custa menos que seu rendimento mensal.")
     else:
-        st.error(f"**🔴 À VISTA!** Parcelar causará um prejuízo real de **{fmt_br(abs(saldo))}**.")
+        st.error(f"**🔴 PAGUE À VISTA!** Parcelar fará você perder **{fmt_br(abs(saldo))}** em relação ao seu capital inicial. O desconto de {desconto_vista:.1f}% vale mais que o rendimento do período.")
+
+    with st.expander("ℹ️ Entenda a análise"):
+        st.write(f"""
+        - Se você **parcelar**, começa com {fmt_br(valor)} e termina com **{fmt_br(saldo if saldo > 0 else 0)}** após pagar todas as parcelas.
+        - Se você pagar **à vista**, gasta {fmt_br(valor_a_vista)} agora.
+        - A comparação considera se o juros embutido nas parcelas ({cet_m:.2f}% ao mês) é maior que o seu rendimento ({rendimento:.2f}% ao mês).
+        - **Bônus de Inflação:** Devido à inflação de {inflacao:.2f}% ao mês, a sua última parcela terá um poder de compra de apenas **{fmt_br(df.iloc[-1]['Poder de Compra'])}** em valores de hoje.
+        """)
