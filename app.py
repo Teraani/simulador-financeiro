@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 
+# ---------- CONFIG ----------
 st.set_page_config(page_title="Simulador Financeiro", layout="wide")
 
 st.title("💰 Simulador Financeiro")
@@ -23,9 +24,9 @@ def calcular_cet_aproximado(valor_produto, parcela, qtd_parcelas):
     while taxa <= 0.2:
         vp = sum(parcela / ((1 + taxa) ** mes) for mes in range(1, qtd_parcelas + 1))
         if abs(vp - valor_produto) < 0.01:
-            cet_mensal = taxa
-            cet_anual = (1 + cet_mensal) ** 12 - 1
-            return cet_mensal * 100, cet_anual * 100
+            cet_m = taxa
+            cet_a = (1 + cet_m) ** 12 - 1
+            return cet_m * 100, cet_a * 100
         taxa += passo
 
     return 0.0, 0.0
@@ -61,9 +62,9 @@ def simular_parcelado(valor, parcelas, juros, rendimento):
         columns=[
             "Mês",
             "Saldo inicial",
-            "Rendimento do mês",
-            "Saldo com rendimento",
-            "Pagamento da parcela",
+            "Rendimento",
+            "Saldo c/ rendimento",
+            "Parcela",
             "Saldo final"
         ]
     )
@@ -90,11 +91,18 @@ def farol_financeiro(cet, rendimento):
 # ---------- INPUTS ----------
 st.subheader("📌 Dados da compra")
 
-valor = st.number_input("Valor do produto (R$)", min_value=0.0, step=100.0)
-parcelas = st.number_input("Quantidade de parcelas", min_value=1, step=1)
-juros = st.number_input("Juros do parcelamento (% ao mês)", min_value=0.0, step=0.1)
-rendimento = st.number_input("Rendimento do investimento (% ao mês)", min_value=0.0, step=0.1)
-desconto = st.number_input("Desconto à vista (%)", min_value=0.0, step=1.0)
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    valor = st.number_input("Valor do produto (R$)", min_value=0.0, step=100.0)
+    parcelas = st.number_input("Parcelas", min_value=1, step=1)
+
+with col2:
+    juros = st.number_input("Juros (% ao mês)", min_value=0.0, step=0.1)
+    rendimento = st.number_input("Rendimento (% ao mês)", min_value=0.0, step=0.1)
+
+with col3:
+    desconto = st.number_input("Desconto à vista (%)", min_value=0.0, step=1.0)
 
 # ---------- EXECUÇÃO ----------
 if st.button("📊 Simular"):
@@ -110,33 +118,33 @@ if st.button("📊 Simular"):
     for col in df.columns[1:]:
         df_formatado[col] = df[col].apply(moeda_br)
 
-    st.subheader("📈 Resultado do Parcelamento")
+    st.subheader("📈 Resultado")
 
-    st.write(f"Parcela mensal: **{moeda_br(parcela)}**")
+    st.write(f"Parcela: **{moeda_br(parcela)}**")
     st.write(f"Total pago: **{moeda_br(total_pago)}**")
-    st.write(f"Juros totais: **{moeda_br(juros_totais)}**")
+    st.write(f"Juros: **{moeda_br(juros_totais)}**")
     st.write(f"CET mensal: **{cet_m:.2f}%**")
     st.write(f"CET anual: **{cet_a:.2f}%**")
 
     st.info("Simulação considerando o valor investido enquanto paga as parcelas.")
 
-    # TABELA SEM ÍNDICE EXTRA
+    # 👉 TABELA AJUSTADA
     st.dataframe(
         df_formatado,
         use_container_width=True,
-        height=450,
-        hide_index=True
+        height=300,      # altura compacta
+        hide_index=True  # remove coluna extra
     )
 
-    st.subheader("⚖️ Comparação Final")
+    st.subheader("⚖️ Comparação")
 
-    st.write(f"Parcelado + investimento: **{moeda_br(sobra_parcelado)}**")
-    st.write(f"À vista + investimento: **{moeda_br(sobra_avista)}**")
+    st.write(f"Parcelado: **{moeda_br(sobra_parcelado)}**")
+    st.write(f"À vista: **{moeda_br(sobra_avista)}**")
 
     if sobra_avista > sobra_parcelado:
-        st.success(f"🏆 À vista é melhor por {moeda_br(sobra_avista - sobra_parcelado)}")
+        st.success(f"À vista melhor por {moeda_br(sobra_avista - sobra_parcelado)}")
     else:
-        st.warning(f"🏆 Parcelar é melhor por {moeda_br(sobra_parcelado - sobra_avista)}")
+        st.warning(f"Parcelar melhor por {moeda_br(sobra_parcelado - sobra_avista)}")
 
     farol, msg = farol_financeiro(cet_m, rendimento)
 
