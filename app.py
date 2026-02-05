@@ -29,7 +29,7 @@ def calcular_cet_aproximado(valor_produto, parcela, qtd_parcelas):
             return cet_mensal * 100, cet_anual * 100
         taxa += passo
 
-    return None, None
+    return 0.0, 0.0
 
 def simular_parcelado(valor, parcelas, juros, rendimento):
     j = juros / 100
@@ -82,11 +82,11 @@ def simular_avista(valor, desconto, parcelas, rendimento):
 
 def farol_financeiro(cet, rendimento):
     if cet <= rendimento:
-        return "🟢 FAROL VERDE", "Crédito barato. Parcelar é financeiramente vantajoso."
+        return "🟢 FAROL VERDE", "Crédito barato. Parcelar é vantajoso."
     elif cet <= rendimento * 1.2:
-        return "🟡 FAROL AMARELO", "Parcelamento no limite. Avalie com cautela."
+        return "🟡 FAROL AMARELO", "Parcelamento no limite. Avalie."
     else:
-        return "🔴 FAROL VERMELHO", "Crédito caro. Financeiramente desvantajoso parcelar."
+        return "🔴 FAROL VERMELHO", "Crédito caro. Melhor evitar."
 
 # ---------- INPUTS ----------
 st.subheader("📌 Dados da compra")
@@ -106,10 +106,13 @@ if st.button("📊 Simular"):
 
     sobra_avista = simular_avista(valor, desconto, parcelas, rendimento)
 
-    # tabela formatada em moeda BR
+    # formatação brasileira da tabela
     df_formatado = df.copy()
     for col in df.columns[1:]:
         df_formatado[col] = df[col].apply(moeda_br)
+
+    # remove índice extra
+    df_formatado = df_formatado.reset_index(drop=True)
 
     st.subheader("📈 Resultado do Parcelamento")
 
@@ -121,7 +124,11 @@ if st.button("📊 Simular"):
 
     st.info("Simulação considerando o valor investido enquanto paga as parcelas.")
 
-    st.dataframe(df_formatado, use_container_width=True)
+    st.dataframe(
+        df_formatado,
+        use_container_width=True,
+        height=450
+    )
 
     st.subheader("⚖️ Comparação Final")
 
