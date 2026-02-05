@@ -9,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# CSS para garantir que nada "estoure" nas laterais
+# CSS para evitar quebra de layout e melhorar margens
 st.markdown("""
     <style>
     .block-container { padding: 1rem 1rem; }
@@ -49,6 +49,7 @@ def simular_parcelado(valor, parcelas, juros, rendimento):
         
         dados.append({
             "Mês": mes, 
+            "Saldo inicial": round(saldo_inicial, 2),
             "Saldo final": round(saldo_final, 2)
         })
         saldo = saldo_final
@@ -81,21 +82,25 @@ if btn:
     
     fig = px.area(df, x="Mês", y="Saldo final", template="plotly_dark")
     
-    # Ajustes finos para NÃO estourar a tela
+    # Ajustes de Margem e Eixos para evitar sobreposição
     fig.update_layout(
         xaxis = dict(
             tickmode = 'linear',
             tick0 = 1,
             dtick = 1,
-            fixedrange=True # Desabilita zoom no mobile para não bugar a rolagem
+            title=None,
+            fixedrange=True
         ),
         yaxis=dict(
             tickformat=",.2f",
-            fixedrange=True
+            title="Saldo (R$)",
+            fixedrange=True,
+            automargin=True # Isso empurra o gráfico para a direita para dar espaço aos números do Y
         ),
-        margin=dict(l=10, r=10, t=10, b=10),
-        height=300,
-        autosize=True # Isso faz ele se adaptar ao container do Streamlit
+        margin=dict(l=50, r=20, t=20, b=50), # Aumentei a margem esquerda (l) e inferior (b)
+        height=350,
+        autosize=True,
+        showlegend=False
     )
 
     fig.update_traces(
@@ -104,3 +109,7 @@ if btn:
     )
     
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+
+    # Adicionei a tabela logo abaixo para você conferir os números se o gráfico estiver pequeno
+    with st.expander("📄 Ver Tabela Completa"):
+        st.dataframe(df, use_container_width=True, hide_index=True)
