@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 
 # ---------- CONFIG ----------
 st.set_page_config(
@@ -9,11 +8,15 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Ajuste visual para mobile e Tooltip do Plotly
+# CSS para esconder a seta lateral e ajustar métricas no mobile
 st.markdown("""
     <style>
     .block-container { padding-top: 1rem; padding-bottom: 1rem; }
     [data-testid="stMetricValue"] { font-size: 1.8rem; }
+    /* Esconde o menu lateral no mobile */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
@@ -79,34 +82,24 @@ if btn_simular:
     df, v_parcela, total_pago, cet_a = simular_parcelado(valor, parcelas, juros, rendimento)
     
     m1, m2 = st.columns(2)
+    # Formatação Brasileira Manual para as métricas
     m1.metric("Parcela", f"R$ {v_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
     m2.metric("CET Anual", f"{cet_a:.2f}%")
 
-    # --- GRÁFICO OTIMIZADO (PLOTLY) ---
+    # --- GRÁFICO (Tenta usar Plotly, se não der, usa o padrão) ---
     st.subheader("📉 Evolução do Saldo")
-    
-    fig = px.area(
-        df, 
-        x="Mês", 
-        y="Saldo final",
-        labels={"Saldo final": "Saldo (R$)", "Mês": "Mês"},
-        template="plotly_dark"
-    )
-    
-    # Formatação do Balão (Hover) e Eixos no padrão BR
-    fig.update_traces(
-        hovertemplate="<b>Mês %{x}</b><br>Saldo: R$ %{y:,.2f}<extra></extra>".replace(",", "X").replace(".", ",").replace("X", "."),
-        line_color="#29b5e8"
-    )
-    
-    fig.update_layout(
-        margin=dict(l=0, r=0, t=0, b=0),
-        height=300,
-        xaxis=dict(dtick=1), # Força mostrar todos os meses no eixo X
-        yaxis=dict(tickformat=",.2f")
-    )
-    
-    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+    try:
+        import plotly.express as px
+        fig = px.area(df, x="Mês", y="Saldo final", template="plotly_dark")
+        fig.update_traces(
+            hovertemplate="<b>Mês %{x}</b><br>Saldo: R$ %{y:,.2f}<extra></extra>".replace(",", "v").replace(".", ",").replace("v", "."),
+            line_color="#29b5e8"
+        )
+        fig.update_layout(height=300, margin=dict(l=0,r=0,b=0,t=0), yaxis=dict(tickformat=",.2f"))
+        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+    except ImportError:
+        st.area_chart(df.set_index("Mês")["Saldo final"])
+        st.warning("Instale a biblioteca 'plotly' para ver o gráfico formatado corretamente.")
 
     # --- TABELA ---
     st.subheader("📅 Tabela Mensal")
@@ -120,6 +113,5 @@ if btn_simular:
             "Parcela": st.column_config.NumberColumn("Parcela", format="R$ %.2f"),
             "Saldo final": st.column_config.NumberColumn("Fim", format="R$ %.2f"),
         },
-        hide_index=True, 
-        use_container_width=True
+        hide_index=True, use_container_width=True
     )
