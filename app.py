@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Simulador Financeiro", layout="centered")
+st.set_page_config(page_title="Simulador Financeiro", layout="wide")
 
 st.title("💰 Simulador Financeiro")
 st.caption("À vista vs Parcelado • CET • Farol Financeiro")
@@ -19,9 +19,8 @@ def calcular_parcela(valor, parcelas, juro):
 def calcular_cet_aproximado(valor_produto, parcela, qtd_parcelas):
     taxa = 0.0
     passo = 0.0001
-    max_taxa = 0.2
 
-    while taxa <= max_taxa:
+    while taxa <= 0.2:
         vp = sum(parcela / ((1 + taxa) ** mes) for mes in range(1, qtd_parcelas + 1))
         if abs(vp - valor_produto) < 0.01:
             cet_mensal = taxa
@@ -106,13 +105,10 @@ if st.button("📊 Simular"):
 
     sobra_avista = simular_avista(valor, desconto, parcelas, rendimento)
 
-    # formatação brasileira da tabela
+    # formatação BR
     df_formatado = df.copy()
     for col in df.columns[1:]:
         df_formatado[col] = df[col].apply(moeda_br)
-
-    # remove índice extra
-    df_formatado = df_formatado.reset_index(drop=True)
 
     st.subheader("📈 Resultado do Parcelamento")
 
@@ -124,10 +120,12 @@ if st.button("📊 Simular"):
 
     st.info("Simulação considerando o valor investido enquanto paga as parcelas.")
 
+    # TABELA SEM ÍNDICE EXTRA
     st.dataframe(
         df_formatado,
         use_container_width=True,
-        height=450
+        height=450,
+        hide_index=True
     )
 
     st.subheader("⚖️ Comparação Final")
