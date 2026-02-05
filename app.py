@@ -68,6 +68,7 @@ def farol_financeiro(cet, rendimento):
 st.subheader("📌 Dados da compra")
 
 valor = st.number_input("Valor do produto (R$)", min_value=0.0, step=100.0)
+st.caption(f"Valor informado: R$ {valor:,.2f}")
 parcelas = st.number_input("Quantidade de parcelas", min_value=1, step=1)
 juros = st.number_input("Juros do parcelamento (% ao mês)", min_value=0.0, step=0.1)
 rendimento = st.number_input("Rendimento do investimento (% ao mês)", min_value=0.0, step=0.1)
