@@ -40,10 +40,13 @@ def simular_parcelado(valor, parcelas, juros, rendimento):
         saldo = saldo + rendimento_mes - parcela
         dados.append([mes, rendimento_mes, -parcela, saldo])
 
-    df = pd.DataFrame(dados, columns=["Mês", "Rendimento", "Parcela", "Saldo Final"])
+    df = pd.DataFrame(
+        dados,
+        columns=["Mês", "Rendimento", "Parcela", "Saldo Final"]
+    )
+
     total_pago = parcela * parcelas
     juros_totais = total_pago - valor
-
     cet_m, cet_a = calcular_cet_aproximado(valor, parcela, parcelas)
 
     return df, saldo, parcela, total_pago, juros_totais, cet_m, cet_a
@@ -83,7 +86,7 @@ if st.button("📊 Simular"):
     st.write(f"**CET mensal:** {cet_m:.2f}%")
     st.write(f"**CET anual:** {cet_a:.2f}%")
 
-    st.dataframe(df)
+    st.dataframe(df, use_container_width=True)
 
     st.subheader("⚖️ Comparação Final")
     st.write(f"Parcelado + investimento: **R$ {sobra_parcelado:,.2f}**")
@@ -98,5 +101,4 @@ if st.button("📊 Simular"):
     st.subheader("🚦 Farol Financeiro")
     st.info(f"{farol}\n\n{msg}")
 
-pandas
-rich
+
