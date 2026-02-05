@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 
 # ---------- CONFIG ----------
 st.set_page_config(
@@ -8,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Ajuste visual para mobile
+# Ajuste visual para mobile e Tooltip do Plotly
 st.markdown("""
     <style>
     .block-container { padding-top: 1rem; padding-bottom: 1rem; }
@@ -49,11 +50,11 @@ def simular_parcelado(valor, parcelas, juros, rendimento):
         
         dados.append({
             "Mês": mes, 
-            "Saldo inicial": saldo_inicial, 
-            "Rendimento": rend_mes,
-            "Saldo c/ rendimento": saldo_total, 
-            "Parcela": v_parcela, 
-            "Saldo final": saldo_final
+            "Saldo inicial": round(saldo_inicial, 2), 
+            "Rendimento": round(rend_mes, 2),
+            "Saldo c/ rendimento": round(saldo_total, 2), 
+            "Parcela": round(v_parcela, 2), 
+            "Saldo final": round(saldo_final, 2)
         })
         saldo = saldo_final
 
@@ -77,17 +78,37 @@ with st.expander("⚙️ Configurar Dados da Compra", expanded=True):
 if btn_simular:
     df, v_parcela, total_pago, cet_a = simular_parcelado(valor, parcelas, juros, rendimento)
     
-    # Resumo em métricas
     m1, m2 = st.columns(2)
     m1.metric("Parcela", f"R$ {v_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
     m2.metric("CET Anual", f"{cet_a:.2f}%")
 
-    # Gráfico de Evolução
+    # --- GRÁFICO OTIMIZADO (PLOTLY) ---
     st.subheader("📉 Evolução do Saldo")
-    # Mostra o saldo final mês a mês
-    st.area_chart(df.set_index("Mês")["Saldo final"], color="#29b5e8")
+    
+    fig = px.area(
+        df, 
+        x="Mês", 
+        y="Saldo final",
+        labels={"Saldo final": "Saldo (R$)", "Mês": "Mês"},
+        template="plotly_dark"
+    )
+    
+    # Formatação do Balão (Hover) e Eixos no padrão BR
+    fig.update_traces(
+        hovertemplate="<b>Mês %{x}</b><br>Saldo: R$ %{y:,.2f}<extra></extra>".replace(",", "X").replace(".", ",").replace("X", "."),
+        line_color="#29b5e8"
+    )
+    
+    fig.update_layout(
+        margin=dict(l=0, r=0, t=0, b=0),
+        height=300,
+        xaxis=dict(dtick=1), # Força mostrar todos os meses no eixo X
+        yaxis=dict(tickformat=",.2f")
+    )
+    
+    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-    # Tabela detalhada
+    # --- TABELA ---
     st.subheader("📅 Tabela Mensal")
     st.dataframe(
         df,
