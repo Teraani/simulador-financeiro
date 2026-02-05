@@ -94,15 +94,15 @@ st.subheader("📌 Dados da compra")
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    valor = st.number_input("Valor do produto (R$)", min_value=0.0, step=100.0)
+    valor = st.number_input("Valor (R$)", min_value=0.0, step=100.0)
     parcelas = st.number_input("Parcelas", min_value=1, step=1)
 
 with col2:
-    juros = st.number_input("Juros (% ao mês)", min_value=0.0, step=0.1)
-    rendimento = st.number_input("Rendimento (% ao mês)", min_value=0.0, step=0.1)
+    juros = st.number_input("Juros % mês", min_value=0.0, step=0.1)
+    rendimento = st.number_input("Rendimento % mês", min_value=0.0, step=0.1)
 
 with col3:
-    desconto = st.number_input("Desconto à vista (%)", min_value=0.0, step=1.0)
+    desconto = st.number_input("Desconto à vista %", min_value=0.0, step=1.0)
 
 # ---------- EXECUÇÃO ----------
 if st.button("📊 Simular"):
@@ -118,6 +118,15 @@ if st.button("📊 Simular"):
     for col in df.columns[1:]:
         df_formatado[col] = df[col].apply(moeda_br)
 
+    # estilo compactado
+    styled = (
+        df_formatado.style
+        .set_properties(**{
+            "text-align": "right",
+            "white-space": "nowrap"
+        })
+    )
+
     st.subheader("📈 Resultado")
 
     st.write(f"Parcela: **{moeda_br(parcela)}**")
@@ -128,13 +137,8 @@ if st.button("📊 Simular"):
 
     st.info("Simulação considerando o valor investido enquanto paga as parcelas.")
 
-    # 👉 TABELA AJUSTADA
-    st.dataframe(
-        df_formatado,
-        use_container_width=True,
-        height=300,      # altura compacta
-        hide_index=True  # remove coluna extra
-    )
+    # 👉 tabela estilo Excel compacta
+    st.table(styled)
 
     st.subheader("⚖️ Comparação")
 
