@@ -2,8 +2,19 @@ import streamlit as st
 import pandas as pd
 
 # ---------- CONFIG ----------
-# initial_sidebar_state="collapsed" remove a seta lateral no mobile
-st.set_page_config(page_title="Simulador Financeiro", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(
+    page_title="Simulador Financeiro", 
+    layout="wide", 
+    initial_sidebar_state="collapsed"
+)
+
+# Ajuste visual para mobile
+st.markdown("""
+    <style>
+    .block-container { padding-top: 1rem; padding-bottom: 1rem; }
+    [data-testid="stMetricValue"] { font-size: 1.8rem; }
+    </style>
+    """, unsafe_allow_html=True)
 
 st.title("💰 Simulador Financeiro")
 st.caption("À vista vs Parcelado • CET • Farol Financeiro")
@@ -37,8 +48,12 @@ def simular_parcelado(valor, parcelas, juros, rendimento):
         saldo_final = saldo_total - v_parcela
         
         dados.append({
-            "Mês": mes, "Saldo inicial": saldo_inicial, "Rendimento": rend_mes,
-            "Saldo c/ rendimento": saldo_total, "Parcela": -v_parcela, "Saldo final": saldo_final
+            "Mês": mes, 
+            "Saldo inicial": saldo_inicial, 
+            "Rendimento": rend_mes,
+            "Saldo c/ rendimento": saldo_total, 
+            "Parcela": v_parcela, 
+            "Saldo final": saldo_final
         })
         saldo = saldo_final
 
@@ -46,11 +61,10 @@ def simular_parcelado(valor, parcelas, juros, rendimento):
     cet_m, cet_a = calcular_cet_aproximado(valor, v_parcela, parcelas)
     return df, v_parcela, v_parcela * parcelas, cet_a
 
-# ---------- INPUTS BR ----------
+# ---------- INPUTS ----------
 with st.expander("⚙️ Configurar Dados da Compra", expanded=True):
     col1, col2 = st.columns(2)
     with col1:
-        # format="%.2f" garante as casas decimais e o Streamlit usa o padrão do navegador para os pontos
         valor = st.number_input("Valor do Produto (R$)", min_value=0.0, value=10000.0, step=100.0, format="%.2f")
         parcelas = st.number_input("Qtd. Parcelas", min_value=1, value=12, step=1)
     with col2:
@@ -63,10 +77,18 @@ with st.expander("⚙️ Configurar Dados da Compra", expanded=True):
 if btn_simular:
     df, v_parcela, total_pago, cet_a = simular_parcelado(valor, parcelas, juros, rendimento)
     
+    # Resumo em métricas
     m1, m2 = st.columns(2)
     m1.metric("Parcela", f"R$ {v_parcela:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
     m2.metric("CET Anual", f"{cet_a:.2f}%")
 
+    # Gráfico de Evolução
+    st.subheader("📉 Evolução do Saldo")
+    # Mostra o saldo final mês a mês
+    st.area_chart(df.set_index("Mês")["Saldo final"], color="#29b5e8")
+
+    # Tabela detalhada
+    st.subheader("📅 Tabela Mensal")
     st.dataframe(
         df,
         column_config={
@@ -77,5 +99,6 @@ if btn_simular:
             "Parcela": st.column_config.NumberColumn("Parcela", format="R$ %.2f"),
             "Saldo final": st.column_config.NumberColumn("Fim", format="R$ %.2f"),
         },
-        hide_index=True, use_container_width=True
+        hide_index=True, 
+        use_container_width=True
     )
