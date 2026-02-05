@@ -61,13 +61,16 @@ def simular_parcelado(valor, parcelas, juros, rendimento):
     cet_m, cet_a = calcular_cet_aproximado(valor, parcela, parcelas)
     return df, saldo, parcela, total_pago, juros_totais, cet_m, cet_a
 
-def farol_financeiro(cet, rendimento):
-    if cet <= rendimento:
-        return "🟢 VERDE", "Crédito barato. Parcelar é vantajoso.", "success"
-    elif cet <= rendimento * 1.2:
-        return "🟡 AMARELO", "Parcelamento no limite. Avalie.", "warning"
+def farol_financeiro(cet_m, rendimento):
+    # Diferença absoluta entre as taxas
+    diferenca = rendimento - cet_m
+    
+    if diferenca > 0:
+        return "🟢 VERDE", f"Vantajoso! Seu dinheiro rende {diferenca:.2f}% a mais que o custo do juros por mês.", "success"
+    elif abs(diferenca) <= 0.05: # Diferença de até 0.05% consideramos empate
+        return "🟡 AMARELO", "Empate técnico. O custo é quase igual ao rendimento. Avalie o desconto à vista.", "warning"
     else:
-        return "🔴 VERMELHO", "Crédito caro. Melhor evitar.", "error"
+        return "🔴 VERMELHO", f"Prejuízo! O juros é {abs(diferenca):.2f}% maior que seu rendimento mensal.", "error"
 
 # ---------- INPUTS (AGORA NO CORPO PRINCIPAL) ----------
 with st.expander("⚙️ Configurar Dados da Compra", expanded=True):
@@ -117,7 +120,11 @@ if btn_simular:
 
     # Farol no final para fechamento da análise
     st.subheader("🚦 Veredito")
-    label, msg, tipo = farol_financeiro(cet_m, rendimento)
-    if tipo == "success": st.success(f"**{label}** - {msg}")
-    elif tipo == "warning": st.warning(f"**{label}** - {msg}")
-    else: st.error(f"**{label}** - {msg}")
+    label, msg, tipo = farol_financeiro(cet_m, rendimento) # cet_m é a taxa mensal que sua função já calcula
+    
+    if tipo == "success": 
+        st.success(f"**{label}** - {msg}")
+    elif tipo == "warning": 
+        st.warning(f"**{label}** - {msg}")
+    else: 
+        st.error(f"**{label}** - {msg}")
