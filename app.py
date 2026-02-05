@@ -4,6 +4,13 @@ import pandas as pd
 # ---------- CONFIG ----------
 st.set_page_config(page_title="Simulador Financeiro", layout="wide")
 
+# CSS personalizado para remover padding excessivo no mobile
+st.markdown("""
+    <style>
+    .block-container { padding-top: 2rem; padding-bottom: 2rem; }
+    </style>
+    """, unsafe_allow_html=True)
+
 st.title("💰 Simulador Financeiro")
 st.caption("À vista vs Parcelado • CET • Farol Financeiro")
 
@@ -62,57 +69,55 @@ def farol_financeiro(cet, rendimento):
     else:
         return "🔴 VERMELHO", "Crédito caro. Melhor evitar.", "error"
 
-# ---------- INPUTS ----------
-with st.sidebar:
-    st.header("📌 Parâmetros")
-    valor = st.number_input("Valor do Produto (R$)", min_value=0.0, value=10000.0, step=100.0)
-    parcelas = st.number_input("Qtd. Parcelas", min_value=1, value=12, step=1)
-    juros = st.number_input("Juros % ao mês", min_value=0.0, value=1.0, step=0.1)
-    rendimento = st.number_input("Rendimento Inv. % mês", min_value=0.0, value=1.0, step=0.1)
-    desconto = st.number_input("Desconto à vista %", min_value=0.0, value=5.0, step=1.0)
-    btn_simular = st.button("📊 Simular Agora", use_container_width=True)
+# ---------- INPUTS (AGORA NO CORPO PRINCIPAL) ----------
+with st.expander("⚙️ Configurar Dados da Compra", expanded=True):
+    col1, col2 = st.columns(2)
+    with col1:
+        valor = st.number_input("Valor do Produto (R$)", min_value=0.0, value=10000.0, step=100.0)
+        parcelas = st.number_input("Qtd. Parcelas", min_value=1, value=12, step=1)
+        desconto = st.number_input("Desconto à vista %", min_value=0.0, value=5.0, step=1.0)
+    with col2:
+        juros = st.number_input("Juros % ao mês", min_value=0.0, value=1.0, step=0.1)
+        rendimento = st.number_input("Rendimento Inv. % mês", min_value=0.0, value=1.0, step=0.1)
+    
+    btn_simular = st.button("📊 Calcular Simulação", use_container_width=True, type="primary")
 
 # ---------- EXECUÇÃO ----------
 if btn_simular:
     df, sobra_p, v_parcela, total_pago, juros_totais, cet_m, cet_a = simular_parcelado(valor, parcelas, juros, rendimento)
     
-    # Métricas de resumo superiores
-    m1, m2, m3, m4 = st.columns(4)
+    st.subheader("📈 Resultado")
+    
+    # Métricas adaptáveis
+    m1, m2 = st.columns(2)
     m1.metric("Parcela", f"R$ {v_parcela:,.2f}")
-    m2.metric("Total Pago", f"R$ {total_pago:,.2f}")
-    m3.metric("CET Anual", f"{cet_a:.2f}%")
+    m2.metric("CET Anual", f"{cet_a:.2f}%")
+    
+    m3, m4 = st.columns(2)
+    m3.metric("Total Pago", f"R$ {total_pago:,.2f}")
     m4.metric("Juros Totais", f"R$ {juros_totais:,.2f}")
 
     st.divider()
 
-    col_tab, col_info = st.columns([2, 1])
+    # Tabela com largura total e rolagem facilitada
+    st.subheader("📅 Detalhamento Mensal")
+    st.dataframe(
+        df,
+        column_config={
+            "Mês": st.column_config.NumberColumn("Mês", format="%d"),
+            "Saldo inicial": st.column_config.NumberColumn("Início", format="R$ %.2f"),
+            "Rendimento": st.column_config.NumberColumn("Rent.", format="R$ %.2f"),
+            "Saldo c/ rendimento": st.column_config.NumberColumn("Total", format="R$ %.2f"),
+            "Parcela": st.column_config.NumberColumn("Parcela", format="R$ %.2f"),
+            "Saldo final": st.column_config.NumberColumn("Fim", format="R$ %.2f"),
+        },
+        hide_index=True,
+        use_container_width=True
+    )
 
-    with col_tab:
-        st.subheader("📅 Fluxo de Caixa")
-        # Tabela compacta e formatada
-        st.dataframe(
-            df,
-            column_config={
-                "Mês": st.column_config.NumberColumn("Mês", format="%d"),
-                "Saldo inicial": st.column_config.NumberColumn("Início", format="R$ %.2f"),
-                "Rendimento": st.column_config.NumberColumn("Rent.", format="R$ %.2f"),
-                "Saldo c/ rendimento": st.column_config.NumberColumn("Total", format="R$ %.2f"),
-                "Parcela": st.column_config.NumberColumn("Parcela", format="R$ %.2f"),
-                "Saldo final": st.column_config.NumberColumn("Fim", format="R$ %.2f"),
-            },
-            hide_index=True,
-            use_container_width=True,
-            height=400 # Fixa a altura para não esticar a tela toda
-        )
-
-    with col_info:
-        st.subheader("🚦 Análise")
-        label, msg, tipo = farol_financeiro(cet_m, rendimento)
-        if tipo == "success": st.success(f"**{label}**\n\n{msg}")
-        elif tipo == "warning": st.warning(f"**{label}**\n\n{msg}")
-        else: st.error(f"**{label}**\n\n{msg}")
-        
-        # Comparativo rápido
-        economia_avista = valor * (1 - desconto/100)
-        st.write(f"Custo à vista hoje: **R$ {economia_avista:,.2f}**")
-        st.info("A tabela ao lado mostra como seu dinheiro rende enquanto você paga as parcelas mês a mês.")
+    # Farol no final para fechamento da análise
+    st.subheader("🚦 Veredito")
+    label, msg, tipo = farol_financeiro(cet_m, rendimento)
+    if tipo == "success": st.success(f"**{label}** - {msg}")
+    elif tipo == "warning": st.warning(f"**{label}** - {msg}")
+    else: st.error(f"**{label}** - {msg}")
