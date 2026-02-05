@@ -2,12 +2,17 @@ import streamlit as st
 import pandas as pd
 
 # ---------- CONFIG ----------
-st.set_page_config(page_title="Simulador Financeiro", layout="wide")
+st.set_page_config(
+    page_title="Simulador Financeiro", 
+    layout="wide", 
+    initial_sidebar_state="collapsed"
+)
 
-# CSS personalizado para remover padding excessivo no mobile
+# CSS para ajuste mobile
 st.markdown("""
     <style>
-    .block-container { padding-top: 2rem; padding-bottom: 2rem; }
+    .block-container { padding-top: 1rem; padding-bottom: 1rem; }
+    [data-testid="stMetricValue"] { font-size: 1.6rem !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -61,27 +66,19 @@ def simular_parcelado(valor, parcelas, juros, rendimento):
     cet_m, cet_a = calcular_cet_aproximado(valor, parcela, parcelas)
     return df, saldo, parcela, total_pago, juros_totais, cet_m, cet_a
 
-def farol_financeiro(cet_m, rendimento):
-    # Diferença absoluta entre as taxas
-    diferenca = rendimento - cet_m
-    
-    if diferenca > 0:
-        return "🟢 VERDE", f"Vantajoso! Seu dinheiro rende {diferenca:.2f}% a mais que o custo do juros por mês.", "success"
-    elif abs(diferenca) <= 0.05: # Diferença de até 0.05% consideramos empate
-        return "🟡 AMARELO", "Empate técnico. O custo é quase igual ao rendimento. Avalie o desconto à vista.", "warning"
-    else:
-        return "🔴 VERMELHO", f"Prejuízo! O juros é {abs(diferenca):.2f}% maior que seu rendimento mensal.", "error"
+def fmt_br(valor):
+    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-# ---------- INPUTS (AGORA NO CORPO PRINCIPAL) ----------
+# ---------- INPUTS ----------
 with st.expander("⚙️ Configurar Dados da Compra", expanded=True):
     col1, col2 = st.columns(2)
     with col1:
-        valor = st.number_input("Valor do Produto (R$)", min_value=0.0, value=10000.0, step=100.0)
+        valor = st.number_input("Valor do Produto (R$)", min_value=0.0, value=10000.0, step=100.0, format="%.2f")
         parcelas = st.number_input("Qtd. Parcelas", min_value=1, value=12, step=1)
-        desconto = st.number_input("Desconto à vista %", min_value=0.0, value=5.0, step=1.0)
+        desconto_vista = st.number_input("Desconto à vista %", min_value=0.0, value=5.0, step=1.0, format="%.2f")
     with col2:
-        juros = st.number_input("Juros % ao mês", min_value=0.0, value=1.0, step=0.1)
-        rendimento = st.number_input("Rendimento Inv. % mês", min_value=0.0, value=1.0, step=0.1)
+        juros = st.number_input("Juros % ao mês", min_value=0.0, value=1.0, step=0.1, format="%.2f")
+        rendimento = st.number_input("Rendimento Inv. % mês", min_value=0.0, value=1.0, step=0.1, format="%.2f")
     
     btn_simular = st.button("📊 Calcular Simulação", use_container_width=True, type="primary")
 
@@ -89,20 +86,23 @@ with st.expander("⚙️ Configurar Dados da Compra", expanded=True):
 if btn_simular:
     df, sobra_p, v_parcela, total_pago, juros_totais, cet_m, cet_a = simular_parcelado(valor, parcelas, juros, rendimento)
     
+    # Cálculo Comparativo à Vista
+    valor_a_vista = valor * (1 - desconto_vista / 100)
+    # Se pagar à vista, quanto esse dinheiro renderia no mesmo período das parcelas?
+    rendimento_acumulado_vista = valor_a_vista * ((1 + rendimento/100) ** parcelas)
+    
     st.subheader("📈 Resultado")
     
-    # Métricas adaptáveis
     m1, m2 = st.columns(2)
-    m1.metric("Parcela", f"R$ {v_parcela:,.2f}")
+    m1.metric("Parcela", fmt_br(v_parcela))
     m2.metric("CET Anual", f"{cet_a:.2f}%")
     
     m3, m4 = st.columns(2)
-    m3.metric("Total Pago", f"R$ {total_pago:,.2f}")
-    m4.metric("Juros Totais", f"R$ {juros_totais:,.2f}")
+    m3.metric("Total Pago", fmt_br(total_pago))
+    m4.metric("Custo à Vista", fmt_br(valor_a_vista))
 
     st.divider()
 
-    # Tabela com largura total e rolagem facilitada
     st.subheader("📅 Detalhamento Mensal")
     st.dataframe(
         df,
@@ -118,13 +118,20 @@ if btn_simular:
         use_container_width=True
     )
 
-    # Farol no final para fechamento da análise
+    # ---------- VEREDITO COMPARATIVO ----------
     st.subheader("🚦 Veredito")
-    label, msg, tipo = farol_financeiro(cet_m, rendimento) # cet_m é a taxa mensal que sua função já calcula
     
-    if tipo == "success": 
-        st.success(f"**{label}** - {msg}")
-    elif tipo == "warning": 
-        st.warning(f"**{label}** - {msg}")
-    else: 
-        st.error(f"**{label}** - {msg}")
+    # Lógica: Se sobrar mais dinheiro no parcelado do que o valor à vista renderia sozinho
+    if sobra_p > 0:
+        lucro_parcelado = sobra_p
+        st.success(f"**🟢 PARCELE!** Ao final de {parcelas} meses, você ainda terá **{fmt_br(lucro_parcelado)}** na conta rendendo. O parcelamento custa menos que seu rendimento mensal.")
+    else:
+        prejuizo = abs(sobra_p)
+        st.error(f"**🔴 PAGUE À VISTA!** Parcelar fará você perder **{fmt_br(prejuizo)}** em relação ao seu capital inicial. O desconto de {desconto_vista:.1f}% vale mais que o rendimento do período.")
+
+    with st.expander("ℹ️ Entenda a análise"):
+        st.write(f"""
+        - Se você **parcelar**, começa com {fmt_br(valor)} e termina com **{fmt_br(sobra_p if sobra_p > 0 else 0)}** após pagar todas as parcelas.
+        - Se você pagar **à vista**, gasta {fmt_br(valor_a_vista)} agora.
+        - A comparação considera se o juros embutido nas parcelas ({cet_m:.2f}% ao mês) é maior que o seu rendimento ({rendimento:.2f}% ao mês).
+        """)
