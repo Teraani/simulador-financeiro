@@ -38,11 +38,22 @@ def simular_parcelado(valor, parcelas, juros, rendimento):
     for mes in range(1, parcelas + 1):
         rendimento_mes = saldo * r
         saldo = saldo + rendimento_mes - parcela
-        dados.append([mes, rendimento_mes, -parcela, saldo])
+
+        dados.append([
+            mes,
+            rendimento_mes,
+            -parcela,
+            saldo
+        ])
 
     df = pd.DataFrame(
         dados,
-        columns=["Mês", "Rendimento", "Parcela", "Saldo Final"]
+        columns=[
+            "Mês",
+            "Rendimento do investimento",
+            "Pagamento da parcela",
+            "Saldo do investimento"
+        ]
     )
 
     total_pago = parcela * parcelas
@@ -68,38 +79,52 @@ def farol_financeiro(cet, rendimento):
 st.subheader("📌 Dados da compra")
 
 valor = st.number_input("Valor do produto (R$)", min_value=0.0, step=100.0)
-st.caption(f"Valor informado: R$ {valor:,.2f}")
 parcelas = st.number_input("Quantidade de parcelas", min_value=1, step=1)
 juros = st.number_input("Juros do parcelamento (% ao mês)", min_value=0.0, step=0.1)
 rendimento = st.number_input("Rendimento do investimento (% ao mês)", min_value=0.0, step=0.1)
 desconto = st.number_input("Desconto à vista (%)", min_value=0.0, step=1.0)
 
+# ---------- EXECUÇÃO ----------
 if st.button("📊 Simular"):
+
     df, sobra_parcelado, parcela, total_pago, juros_totais, cet_m, cet_a = (
         simular_parcelado(valor, parcelas, juros, rendimento)
     )
+
     sobra_avista = simular_avista(valor, desconto, parcelas, rendimento)
 
     st.subheader("📈 Resultado do Parcelamento")
+
     st.write(f"**Parcela mensal:** R$ {parcela:,.2f}")
     st.write(f"**Total pago:** R$ {total_pago:,.2f}")
     st.write(f"**Juros totais:** R$ {juros_totais:,.2f}")
     st.write(f"**CET mensal:** {cet_m:.2f}%")
     st.write(f"**CET anual:** {cet_a:.2f}%")
 
+    st.info(
+        "Simulação considerando que o valor total permanece investido "
+        "enquanto você paga as parcelas."
+    )
+
     st.dataframe(df, use_container_width=True)
 
     st.subheader("⚖️ Comparação Final")
+
     st.write(f"Parcelado + investimento: **R$ {sobra_parcelado:,.2f}**")
     st.write(f"À vista + investimento: **R$ {sobra_avista:,.2f}**")
 
     if sobra_avista > sobra_parcelado:
-        st.success(f"🏆 À VISTA é melhor por R$ {sobra_avista - sobra_parcelado:,.2f}")
+        st.success(
+            f"🏆 À VISTA é melhor por "
+            f"R$ {sobra_avista - sobra_parcelado:,.2f}"
+        )
     else:
-        st.warning(f"🏆 PARCELAR é melhor por R$ {sobra_parcelado - sobra_avista:,.2f}")
+        st.warning(
+            f"🏆 PARCELAR é melhor por "
+            f"R$ {sobra_parcelado - sobra_avista:,.2f}"
+        )
 
     farol, msg = farol_financeiro(cet_m, rendimento)
+
     st.subheader("🚦 Farol Financeiro")
     st.info(f"{farol}\n\n{msg}")
-
-
